@@ -1,0 +1,62 @@
+# dependencies
+node_modules/
+
+# build files
+dist/
+build/
+
+# environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# runtime files
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# coverage
+coverage/
+
+# uploads
+uploads/
+temp/
+tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+
+# package lock optional
+# package-lock.json
+# yarn.lock
+
+# cache
+.cache/
+
+# test files
+jest-cache/
+
+# dotenv
+.env*
+
+# misc
+*.tgz
