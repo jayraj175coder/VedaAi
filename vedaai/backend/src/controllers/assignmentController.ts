@@ -288,10 +288,12 @@ export const downloadPDF = async (req: AuthRequest, res: Response): Promise<void
 }
 
 function generatePaperHTML(paper: any): string {
-  const sections = paper.sections.map((section: any, si: number) => {
-    const questions = section.questions.map((q: any, qi: number) => {
+  const paperSections = Array.isArray(paper.sections) ? paper.sections : []
+  const sections = paperSections.map((section: any) => {
+    const sectionQuestions = Array.isArray(section.questions) ? section.questions : []
+    const questions = sectionQuestions.map((q: any, qi: number) => {
       let optionsHtml = ''
-      if (q.options) {
+      if (Array.isArray(q.options) && q.options.length > 0) {
         optionsHtml = `<div style="margin-left:20px">${q.options.map((opt: string, oi: number) =>
           `<p>${String.fromCharCode(97 + oi)}) ${opt}</p>`).join('')}</div>`
       }
@@ -304,6 +306,19 @@ function generatePaperHTML(paper: any): string {
       ${questions}
     </div>`
   }).join('')
+  const answerEntries = paper.answerKey && typeof paper.answerKey === 'object' ? Object.entries(paper.answerKey) : []
+  const answerKey = answerEntries.length > 0
+    ? `<div style="page-break-before:always;margin-top:40px;border-top:2px solid #111;padding-top:24px">
+      <h2>Answer Key</h2>
+      <p style="color:#666;font-weight:bold;text-transform:uppercase;font-size:12px">Teacher Copy</p>
+      ${answerEntries.map(([questionNo, answer]) =>
+        `<div style="display:grid;grid-template-columns:56px 1fr;gap:12px;margin-bottom:12px">
+          <strong>${questionNo}</strong>
+          <span>${answer}</span>
+        </div>`
+      ).join('')}
+    </div>`
+    : ''
 
   return `<!DOCTYPE html><html><head><title>Question Paper</title>
     <style>body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px}
@@ -321,5 +336,6 @@ function generatePaperHTML(paper: any): string {
       <p>Name: _____________________ Roll No: ____________</p>
     </div>
     ${sections}
+    ${answerKey}
     </body></html>`
 }

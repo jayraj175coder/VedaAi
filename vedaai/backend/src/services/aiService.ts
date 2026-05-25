@@ -52,6 +52,36 @@ const mcqOpts: Record<string, string[]> = {
   'Which device converts electrical energy to light?': ['Motor', 'Generator', 'Bulb', 'Transformer'],
 }
 
+const demoAnswers: Record<string, string> = {
+  'Which of the following is a good conductor of electricity?': 'Copper',
+  'What is the SI unit of electric current?': 'Ampere',
+  'Which component controls current in a circuit?': 'Rheostat',
+  'What happens to resistance when wire length is doubled?': 'Doubled',
+  'What is the function of a fuse in a circuit?': 'Protect circuit',
+  'Which device converts electrical energy to light?': 'Bulb',
+  'Define electric potential difference and state its SI unit.': 'Electric potential difference is the work done to move a unit charge between two points. Its SI unit is volt.',
+  "What is Ohm's Law? Write the mathematical expression.": 'Ohm\'s Law states that current through a conductor is directly proportional to the potential difference across it, if temperature remains constant. V = IR.',
+  'Distinguish between series and parallel circuits.': 'In series, components share one path and the same current flows through all. In parallel, components have separate paths and the same voltage appears across each branch.',
+  'Why is it dangerous to touch appliances with wet hands?': 'Wet hands reduce body resistance and allow more current to pass through the body, increasing the risk of electric shock.',
+  'Explain the heating effect of electric current.': 'When current flows through resistance, electrical energy converts into heat energy. This is called the heating effect of electric current.',
+  'What are the factors affecting resistance of a conductor?': 'Resistance depends on length, area of cross-section, material, and temperature of the conductor.',
+  'Describe the construction and working of an electric motor with a labeled diagram.': 'A correct answer should describe coil, magnetic field, split-ring commutator, brushes, and rotation due to force on a current-carrying conductor.',
+  "Explain Joule's Law of heating with derivation and applications.": 'Joule\'s Law states H = I^2Rt. A correct answer should derive it from electrical power and mention uses such as heaters, irons, and fuses.',
+  'Compare series and parallel combinations of resistances with diagrams.': 'A correct answer should compare equivalent resistance, current, voltage, advantages, and include neat circuit diagrams.',
+  'Electric current flows from positive to negative terminal outside the cell.': 'True',
+  'Resistance of a conductor increases with increase in temperature.': 'True',
+  'A fuse wire has high resistance and low melting point.': 'True',
+  'The SI unit of resistance is ohm.': 'True',
+  'Insulators allow free flow of electrons through them.': 'False',
+  'The SI unit of electric charge is ______.': 'coulomb',
+  'A device that opposes the flow of current is called ______.': 'resistor',
+  '______ effect of current is used in electric heaters.': 'Heating',
+  'Potential difference is measured by an instrument called ______.': 'voltmeter',
+  'The wire connecting an appliance to earth is called ______ wire.': 'earth',
+  'Match the electrical components with their functions.': 'Battery - source of electrical energy; switch - opens or closes circuit; bulb - converts electrical energy to light; fuse - protects circuit.',
+  'Match the scientists with their discoveries.': 'Ohm - relation between voltage, current, and resistance; Joule - heating effect of current; Faraday - electromagnetic induction.',
+}
+
 function getSectionInstructions(type: string, marks: number): string {
   if (type === 'Multiple Choice Questions') return `Choose the correct answer. (${marks} mark each)`
   if (type === 'Short Answer') return `Answer in 2-3 sentences. (${marks} mark${marks > 1 ? 's' : ''} each)`
@@ -88,6 +118,14 @@ function generateDemoPaper(
       questions,
     }
   })
+  const answerKey = sections.reduce<Record<string, string>>((answers, section, sectionIndex) => {
+    section.questions.forEach((question, questionIndex) => {
+      const key = `${String.fromCharCode(65 + sectionIndex)}${questionIndex + 1}`
+      answers[key] = demoAnswers[question.text] || 'Teacher discretion'
+    })
+    return answers
+  }, {})
+
   return {
     schoolName: schoolName || 'Delhi Public School',
     subject: subject || 'Science',
@@ -96,6 +134,7 @@ function generateDemoPaper(
     maxMarks: totalMarks,
     generalInstructions: 'All questions are compulsory unless stated otherwise.',
     sections,
+    answerKey,
   }
 }
 
@@ -128,7 +167,7 @@ async function generateWithGemini(params: {
     process.env.GEMINI_API_KEY as string
   )
 
-  const modelName = process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash'
+  const modelName = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash-lite'
   const model = genAI.getGenerativeModel({
     model: modelName
   })
@@ -188,8 +227,18 @@ Return JSON format:
         }
       ]
     }
-  ]
+  ],
+  "answerKey": {
+    "A1": "Correct answer or expected marking point",
+    "A2": "Correct answer or expected marking point"
+  }
 }
+
+Answer key rules:
+- Include one answer for every generated question.
+- Use keys in section/question format: A1, A2, B1, B2.
+- For long answers, provide concise expected marking points.
+- For MCQs, provide the exact correct option text.
 `
 
   const result = await model.generateContent(prompt)
@@ -201,7 +250,33 @@ Return JSON format:
     .replace(/```/g, '')
     .trim()
 
-  return JSON.parse(cleaned)
+  const parsed = JSON.parse(cleaned)
+  const sections = Array.isArray(parsed.sections)
+    ? parsed.sections.map((section: any, sectionIndex: number) => ({
+      title: section?.title || `Section ${String.fromCharCode(65 + sectionIndex)}`,
+      instructions: section?.instructions || '',
+      questions: Array.isArray(section?.questions)
+        ? section.questions.map((question: any) => ({
+          text: question?.text || '',
+          marks: Number(question?.marks) || 1,
+          difficulty: ['easy', 'medium', 'hard'].includes(question?.difficulty) ? question.difficulty : 'medium',
+          type: question?.type || 'Short Answer',
+          options: Array.isArray(question?.options) ? question.options : undefined,
+        }))
+        : [],
+    }))
+    : []
+
+  return {
+    schoolName: parsed.schoolName || schoolName || 'Delhi Public School',
+    subject: parsed.subject || subject || 'Science',
+    className: parsed.className || className || '8th',
+    timeAllowed: parsed.timeAllowed || (totalMarks <= 20 ? '45 minutes' : totalMarks <= 40 ? '90 minutes' : '3 hours'),
+    maxMarks: Number(parsed.maxMarks) || totalMarks,
+    generalInstructions: parsed.generalInstructions || 'All questions are compulsory unless stated otherwise.',
+    sections,
+    answerKey: parsed.answerKey && typeof parsed.answerKey === 'object' ? parsed.answerKey : undefined,
+  }
 }
 
 export const generateQuestionPaper = async (params: {
