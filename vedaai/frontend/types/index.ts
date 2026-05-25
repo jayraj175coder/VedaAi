@@ -57,6 +57,7 @@ export interface GeneratedPaper {
   maxMarks: number
   generalInstructions: string
   sections: Section[]
+  answerKey?: Record<string, string>
 }
 
 export interface JobStatus {

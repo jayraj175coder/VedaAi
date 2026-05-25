@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Download, Printer, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Download, Printer, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import AppLayout from '@/components/layout/AppLayout'
 import { assignmentService } from '@/services/api'
 import { Assignment, Section, Question } from '@/types'
@@ -13,6 +13,7 @@ export default function PaperPage() {
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showAnswerKey, setShowAnswerKey] = useState(false)
 
   useEffect(() => {
     assignmentService.getById(id)
@@ -54,6 +55,8 @@ export default function PaperPage() {
   )
 
   const paper = assignment.generatedPaper
+  const sections = Array.isArray(paper.sections) ? paper.sections : []
+  const answerEntries = paper.answerKey ? Object.entries(paper.answerKey) : []
 
   return (
     <AppLayout>
@@ -63,9 +66,16 @@ export default function PaperPage() {
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1">
-          <p className="text-xs text-gray-400">Certainly, Lalitapur! Here are customized Question Paper for your CBSE Grade 8 Science classes on the NCERT chapters:</p>
+          <p className="text-xs text-gray-400">{assignment.title}</p>
         </div>
         <div className="flex items-center gap-2">
+          {answerEntries.length > 0 && (
+            <button onClick={() => setShowAnswerKey(prev => !prev)}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors">
+              {showAnswerKey ? <EyeOff size={15} /> : <Eye size={15} />}
+              {showAnswerKey ? 'Hide Key' : 'Answer Key'}
+            </button>
+          )}
           <button onClick={handleDownload}
             className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors">
             <Download size={15} /> Download PDF
@@ -106,14 +116,17 @@ export default function PaperPage() {
           </div>
 
           {/* Sections */}
-          {paper.sections.map((section: Section, si: number) => (
+          {sections.map((section: Section, si: number) => {
+            const questions = Array.isArray(section.questions) ? section.questions : []
+
+            return (
             <div key={si} className="mb-8">
               <h2 className="text-base font-bold text-gray-900 mb-1 underline">{section.title}</h2>
               {section.instructions && (
                 <p className="text-sm text-gray-600 italic mb-4">{section.instructions}</p>
               )}
               <div className="space-y-4">
-                {section.questions.map((q: Question, qi: number) => (
+                {questions.map((q: Question, qi: number) => (
                   <div key={qi} className="text-sm">
                     <p className="font-medium text-gray-900 mb-1.5">
                       {qi + 1}. {q.text}
@@ -137,11 +150,29 @@ export default function PaperPage() {
                 ))}
               </div>
             </div>
-          ))}
+            )
+          })}
 
           <div className="border-t border-gray-300 pt-4 mt-8 text-center text-sm text-gray-500 font-semibold">
             *** End of Question Paper ***
           </div>
+
+          {showAnswerKey && answerEntries.length > 0 && (
+            <div className="mt-10 pt-6 border-t-2 border-gray-900">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <h2 className="text-base font-bold text-gray-900">Answer Key</h2>
+                <span className="text-xs font-semibold uppercase tracking-wide text-orange-600">Teacher Copy</span>
+              </div>
+              <div className="space-y-3">
+                {answerEntries.map(([questionNo, answer]) => (
+                  <div key={questionNo} className="grid grid-cols-[3rem_1fr] gap-3 text-sm">
+                    <span className="font-bold text-gray-900">{questionNo}</span>
+                    <p className="text-gray-700">{answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </AppLayout>
